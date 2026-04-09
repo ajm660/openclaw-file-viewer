@@ -11,4 +11,4 @@ ENV DATA_DIR=/data
 
 EXPOSE 3000
 
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:3000", "--workers", "4", "app:app"]
