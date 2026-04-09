@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory, abort, render_template_string
+from flask import Flask, abort, render_template_string
 import os
 
 app = Flask(__name__)
@@ -7,32 +7,61 @@ DATA_DIR = os.environ.get("DATA_DIR", "/data")
 
 TEMPLATE = """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>OpenClaw File Viewer</title>
-  <style>
-    body { font-family: Arial; padding: 20px; }
-    a { text-decoration: none; color: blue; }
-    pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
-  </style>
+  <meta charset="UTF-8">
+  <title>OpenClaw Viewer</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
 </head>
-<body>
 
-<h1>📁 OpenClaw File Viewer</h1>
+<body class="bg-gray-100 text-gray-900">
 
-{% if files %}
-<ul>
-{% for f in files %}
-  <li><a href="/view/{{ f }}">{{ f }}</a></li>
-{% endfor %}
-</ul>
-{% endif %}
+<div class="max-w-6xl mx-auto p-6">
 
-{% if content %}
-<h2>{{ filename }}</h2>
-<pre>{{ content }}</pre>
-<a href="/">← Back</a>
-{% endif %}
+  <!-- Header -->
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold">📁 OpenClaw File Viewer</h1>
+    <p class="text-gray-600 mt-1">Browse Markdown files in /data</p>
+  </div>
+
+  {% if files %}
+  <!-- File List -->
+  <div class="bg-white shadow rounded-2xl p-4">
+    <h2 class="text-xl font-semibold mb-4">Files</h2>
+
+    <ul class="divide-y">
+      {% for f in files %}
+      <li class="py-2">
+        <a href="/view/{{ f }}" class="flex justify-between items-center hover:bg-gray-50 px-2 py-2 rounded-lg">
+          <span class="font-mono text-sm text-blue-600">{{ f }}</span>
+          <span class="text-xs text-gray-400">→</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if content %}
+  <!-- File Viewer -->
+  <div class="bg-white shadow rounded-2xl p-6">
+    
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-semibold">{{ filename }}</h2>
+      <a href="/" class="text-sm text-blue-500 hover:underline">← Back</a>
+    </div>
+
+    <div class="bg-gray-900 text-gray-100 rounded-xl p-4 overflow-x-auto text-sm font-mono whitespace-pre-wrap">
+{{ content }}
+    </div>
+
+  </div>
+  {% endif %}
+
+</div>
 
 </body>
 </html>
