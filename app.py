@@ -1,4 +1,4 @@
-from flask import Flask, abort, render_template_string
+from flask import Flask, abort, render_template_string, request
 import os
 
 app = Flask(__name__)
@@ -29,7 +29,20 @@ TEMPLATE = """
 
   <div class="mb-6">
     <h1 class="text-3xl font-bold">📁 OpenClaw File Viewer</h1>
-    <p class="text-gray-600">Browse Markdown files in /data</p>
+    <p class="text-gray-600">{{ description }}</p>
+    
+    {% if tree %}
+    <div class="mt-4 flex gap-2">
+      <a href="/?show_all=false" 
+         class="px-4 py-2 rounded {% if not show_all %}bg-blue-600 text-white{% else %}bg-gray-200 text-gray-800 hover:bg-gray-300{% endif %}">
+        .md Files Only
+      </a>
+      <a href="/?show_all=true" 
+         class="px-4 py-2 rounded {% if show_all %}bg-blue-600 text-white{% else %}bg-gray-200 text-gray-800 hover:bg-gray-300{% endif %}">
+        All Files
+      </a>
+    </div>
+    {% endif %}
   </div>
 
   {% macro render_tree(tree, path="") %}
@@ -88,7 +101,7 @@ TEMPLATE = """
 </html>
 """
 
-def build_tree(base):
+def build_tree(base, md_only=True):
     tree = {}
 
     for root, dirs, files in os.walk(base):
@@ -100,15 +113,24 @@ def build_tree(base):
             current = current.setdefault(part, {})
 
         for file in files:
-            if file.endswith(".md"):
+            if md_only:
+                if file.endswith(".md"):
+                    current[file] = None
+            else:
+                # Show all files, including hidden ones
                 current[file] = None
 
     return tree
 
 @app.route("/")
 def index():
-    tree = build_tree(DATA_DIR)
-    return render_template_string(TEMPLATE, tree=tree, content=None)
+    show_all = request.args.get("show_all", "false").lower() == "true"
+    md_only = not show_all
+    tree = build_tree(DATA_DIR, md_only=md_only)
+    
+    description = "Browse all files in /data" if show_all else "Browse Markdown files in /data"
+    
+    return render_template_string(TEMPLATE, tree=tree, content=None, show_all=show_all, description=description)
 
 @app.route("/view/<path:filename>")
 def view_file(filename):
