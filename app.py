@@ -1,4 +1,4 @@
-from flask import Flask, abort, render_template_string, request
+from flask import Flask, abort, render_template_string, request, redirect, url_for
 import os
 
 app = Flask(__name__)
@@ -62,10 +62,14 @@ TEMPLATE = """
             </div>
           </li>
         {% else %}
-          <li class="mb-1">
+          <li class="mb-1 flex items-center gap-2">
             <a href="/view/{{ full_path }}" 
                class="text-blue-600 hover:underline font-mono text-sm">
               📄 {{ name }}
+            </a>
+            <a href="/edit/{{ full_path }}" 
+               class="text-xs text-green-600 hover:text-green-800 hover:underline">
+              ✏️ Edit
             </a>
           </li>
         {% endif %}
@@ -85,12 +89,48 @@ TEMPLATE = """
     
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-semibold">{{ filename }}</h2>
-      <a href="/" class="text-sm text-blue-500 hover:underline">← Back</a>
+      <div class="flex gap-2">
+        <a href="/edit/{{ filename }}" class="text-sm text-green-600 hover:text-green-800 hover:underline">✏️ Edit</a>
+        <a href="/" class="text-sm text-blue-500 hover:underline">← Back</a>
+      </div>
     </div>
 
     <div class="bg-gray-900 text-gray-100 rounded-xl p-4 overflow-x-auto text-sm font-mono whitespace-pre-wrap">
 {{ content }}
     </div>
+
+  </div>
+  {% endif %}
+
+  {% if edit_mode %}
+  <div class="bg-white shadow rounded-2xl p-6 mt-6">
+    
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-semibold">Editing: {{ filename }}</h2>
+      <div class="flex gap-2">
+        <a href="/view/{{ filename }}" class="text-sm text-blue-500 hover:underline">👁️ View</a>
+        <a href="/" class="text-sm text-gray-500 hover:underline">← Back</a>
+      </div>
+    </div>
+
+    <form method="POST" action="/save/{{ filename }}">
+      <div class="mb-4">
+        <textarea name="content" 
+                  class="w-full h-96 bg-gray-900 text-gray-100 rounded-xl p-4 text-sm font-mono border-0 resize-y focus:ring-2 focus:ring-blue-500"
+                  placeholder="File content...">{{ content }}</textarea>
+      </div>
+      
+      <div class="flex gap-2">
+        <button type="submit" 
+                class="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:ring-2 focus:ring-green-500">
+          💾 Save Changes
+        </button>
+        <a href="/view/{{ filename }}" 
+           class="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+          Cancel
+        </a>
+      </div>
+    </form>
 
   </div>
   {% endif %}
@@ -148,6 +188,47 @@ def view_file(filename):
         content=content,
         filename=filename
     )
+
+@app.route("/edit/<path:filename>")
+def edit_file(filename):
+    full_path = os.path.join(DATA_DIR, filename)
+
+    if not os.path.exists(full_path):
+        abort(404)
+
+    # Security check: ensure the file is within DATA_DIR
+    if not os.path.abspath(full_path).startswith(os.path.abspath(DATA_DIR)):
+        abort(403)
+
+    with open(full_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    return render_template_string(
+        TEMPLATE,
+        tree=None,
+        content=content,
+        filename=filename,
+        edit_mode=True
+    )
+
+@app.route("/save/<path:filename>", methods=["POST"])
+def save_file(filename):
+    full_path = os.path.join(DATA_DIR, filename)
+
+    # Security check: ensure the file is within DATA_DIR
+    if not os.path.abspath(full_path).startswith(os.path.abspath(DATA_DIR)):
+        abort(403)
+
+    content = request.form.get("content", "")
+
+    try:
+        with open(full_path, "w", encoding="utf-8") as f:
+            f.write(content)
+    except Exception as e:
+        # In a real app, you'd want better error handling
+        abort(500)
+
+    return redirect(url_for("view_file", filename=filename))
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 3000))
