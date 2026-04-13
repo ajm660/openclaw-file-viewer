@@ -1,4 +1,4 @@
-from flask import Flask, abort, render_template_string, request, redirect, url_for
+from flask import Flask, abort, render_template_string, request, redirect, url_for, jsonify
 import os
 
 app = Flask(__name__)
@@ -229,6 +229,28 @@ def save_file(filename):
         abort(500)
 
     return redirect(url_for("view_file", filename=filename))
+
+@app.route("/api/save/<path:filename>", methods=["POST"])
+def api_save_file(filename):
+    full_path = os.path.join(DATA_DIR, filename)
+
+    if not os.path.abspath(full_path).startswith(os.path.abspath(DATA_DIR)):
+        return jsonify({"error": "Access denied"}), 403
+
+    data = request.get_json(silent=True)
+    if data is not None:
+        content = data.get("content", "")
+    else:
+        content = request.form.get("content", "")
+
+    try:
+        with open(full_path, "w", encoding="utf-8") as f:
+            f.write(content)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({"success": True, "filename": filename})
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 3000))
